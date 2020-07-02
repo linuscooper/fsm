@@ -227,6 +227,7 @@ window.onload = function () {
 };
 
 var shift = false;
+var backspace = false;
 
 document.onkeydown = function (e) {
   var key = crossBrowserKey(e);
@@ -238,7 +239,26 @@ document.onkeydown = function (e) {
     return true;
   } else if (key == 8) {
     // backspace key
-    if (selectedObject != null && "text" in selectedObject) {
+    if (shift && selectedObject != null) {
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i] == selectedObject) {
+          nodes.splice(i--, 1);
+        }
+      }
+      for (var i = 0; i < links.length; i++) {
+        if (
+          links[i] == selectedObject ||
+          links[i].node == selectedObject ||
+          links[i].nodeA == selectedObject ||
+          links[i].nodeB == selectedObject
+        ) {
+          links.splice(i--, 1);
+        }
+      }
+      selectedObject = null;
+      draw();
+    } else if (selectedObject != null && "text" in selectedObject) {
+      console.log("hello??");
       selectedObject.text = selectedObject.text.substr(
         0,
         selectedObject.text.length - 1
@@ -304,6 +324,7 @@ document.onkeypress = function (e) {
     return false;
   } else if (key == 8) {
     // backspace is a shortcut for the back button, but do NOT want to change pages
+    console.log("when does this run??");
     return false;
   }
 };
