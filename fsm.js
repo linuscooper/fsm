@@ -286,12 +286,10 @@ document.onkeydown = function (e) {
     return false;
   } else if (key == 46) {
     // delete key
-    if (selectedObject != null && "text" in selectedObject) { // delete char in text
-      if (textCaretPosition < selectedObject.text.length) {
-        var currentText = selectedObject.text;
-        selectedObject.text = currentText.substring(0, textCaretPosition) + currentText.substring(textCaretPosition + 1);
-        makeCaretVisibleAndRestartBlink();
-      }
+    if (selectedObject != null && "text" in selectedObject && textCaretPosition < selectedObject.text.length) {
+      var currentText = selectedObject.text;
+      selectedObject.text = currentText.substring(0, textCaretPosition) + currentText.substring(textCaretPosition + 1);
+      makeCaretVisibleAndRestartBlink();
       return false;
     } else if (selectedObject != null) { // delete selected obj
       for (var i = 0; i < nodes.length; i++) {
