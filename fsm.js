@@ -27,14 +27,20 @@ function drawText(c, originalText, x, y, angleOrNull, isSelected) {
   if ("advancedFillText" in c) {
     c.advancedFillText(text, originalText, x + width / 2, y, angleOrNull);
   } else {
-    x = Math.round(x);
-    y = Math.round(y);
-    c.fillText(text, x, y + 6);
+    var roundedX = Math.round(x);
+    var roundedY = Math.round(y);
+    c.fillText(text, roundedX, roundedY + 6);
     if (isSelected && caretVisible && canvasHasFocus() && document.hasFocus()) {
-      x += width;
+      let textBeforeCaret = originalText.substring(0, textCaretPosition);
+      let textForCaretMeasure = convertLatexShortcuts(textBeforeCaret);
+      let caretOffset = c.measureText(textForCaretMeasure).width;
+
+      // left edge of centered textblock
+      let caretX = roundedX + caretOffset;
+
       c.beginPath();
-      c.moveTo(x, y - 10);
-      c.lineTo(x, y + 10);
+      c.moveTo(Math.round(caretX), roundedY - 10);
+      c.lineTo(Math.round(caretX), roundedY + 10);
       c.stroke();
     }
   }
@@ -42,11 +48,22 @@ function drawText(c, originalText, x, y, angleOrNull, isSelected) {
 
 var caretTimer;
 var caretVisible = true;
+var textCaretPosition = 0;
 
 function resetCaret() {
   clearInterval(caretTimer);
   caretTimer = setInterval("caretVisible = !caretVisible; draw()", 500);
   caretVisible = true;
+  if (selectedObject && "text" in selectedObject) {
+    // reset caret position to end of text
+    textCaretPosition = selectedObject.text.length;
+  }
+}
+function makeCaretVisibleAndRestartBlink() {
+  clearInterval(caretTimer);
+  caretVisible = true;
+  caretTimer = setInterval("caretVisible = !caretVisible; draw()", 500);
+  draw(); // redraw to update caret
 }
 
 var canvas;
@@ -257,21 +274,26 @@ document.onkeydown = function (e) {
       }
       selectedObject = null;
       draw();
-    } else if (selectedObject != null && "text" in selectedObject) {
-      console.log("hello??");
-      selectedObject.text = selectedObject.text.substr(
-        0,
-        selectedObject.text.length - 1
-      );
-      resetCaret();
-      draw();
+    } else if (selectedObject != null && "text" in selectedObject) { // backspace
+      if (selectedObject.text.length > 0 && textCaretPosition > 0) {
+        var currentText = selectedObject.text;
+        selectedObject.text = currentText.substring(0, textCaretPosition - 1) + currentText.substring(textCaretPosition);
+        textCaretPosition--;
+        makeCaretVisibleAndRestartBlink();
+      }
     }
-
     // backspace is a shortcut for the back button, but do NOT want to change pages
     return false;
   } else if (key == 46) {
     // delete key
-    if (selectedObject != null) {
+    if (selectedObject != null && "text" in selectedObject) { // delete char in text
+      if (textCaretPosition < selectedObject.text.length) {
+        var currentText = selectedObject.text;
+        selectedObject.text = currentText.substring(0, textCaretPosition) + currentText.substring(textCaretPosition + 1);
+        makeCaretVisibleAndRestartBlink();
+      }
+      return false;
+    } else if (selectedObject != null) { // delete selected obj
       for (var i = 0; i < nodes.length; i++) {
         if (nodes[i] == selectedObject) {
           nodes.splice(i--, 1);
@@ -289,6 +311,23 @@ document.onkeydown = function (e) {
       }
       selectedObject = null;
       draw();
+      return false;
+    }
+  } else if (key == 37) { // left arrow key
+    if (selectedObject != null && "text" in selectedObject) {
+      if (textCaretPosition > 0) {
+        textCaretPosition--;
+        makeCaretVisibleAndRestartBlink();
+      }
+      return false;
+    }
+  } else if (key == 39) { // right arrow key
+    if (selectedObject != null && "text" in selectedObject) {
+      if (textCaretPosition < selectedObject.text.length) {
+        textCaretPosition++;
+        makeCaretVisibleAndRestartBlink();
+      }
+      return false;
     }
   }
 };
@@ -316,9 +355,11 @@ document.onkeypress = function (e) {
     selectedObject != null &&
     "text" in selectedObject
   ) {
-    selectedObject.text += String.fromCharCode(key);
-    resetCaret();
-    draw();
+    var char = String.fromCharCode(key);
+    var currentText = selectedObject.text;
+    selectedObject.text = currentText.substring(0, textCaretPosition) + char + currentText.substring(textCaretPosition);
+    textCaretPosition++; // move caret after insertion
+    makeCaretVisibleAndRestartBlink();
 
     // don't let keys do their actions (like space scrolls down the page)
     return false;
